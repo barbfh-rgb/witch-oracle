@@ -439,6 +439,7 @@
   <div class="btn-row">
     <button class="btn" onclick="newReading()">✦ Draw Again</button>
     <button class="btn" onclick="openGrimoire()">✦ My Grimoire</button>
+    <button class="btn" onclick="openGrimoireCalendar()">✦ Calendar</button>
   </div>
 
   <div class="journal-section" id="journalSection">
@@ -457,11 +458,16 @@
     <button class="about-close" onclick="closeGrimoire()">✕</button>
     <div class="grimoire-title">My Grimoire</div>
     <div class="grimoire-tabs">
-      <button class="grimoire-tab active" id="tabEntries"   onclick="showGrimoireTab('entries')">Entries</button>
-      <button class="grimoire-tab"        id="tabCalendar"  onclick="showGrimoireTab('calendar')">Calendar</button>
+      <button class="grimoire-tab active" id="tabEntries"  onclick="showGrimoireTab('entries')">Entries</button>
+      <button class="grimoire-tab"        id="tabCalendar" onclick="showGrimoireTab('calendar')">Calendar</button>
+      <button class="grimoire-tab"        id="tabNotes"    onclick="showGrimoireTab('notes')">Notes</button>
     </div>
     <div id="grimoireEntries"></div>
     <div id="grimoireCalendar" style="display:none;flex-direction:column;gap:.8rem"></div>
+    <div id="grimoireNotes"    style="display:none;flex-direction:column;gap:.6rem">
+      <div class="grimoire-empty" style="font-style:normal;font-size:.72rem;letter-spacing:.1em;font-family:'Cinzel',serif;text-transform:uppercase;opacity:.5">Free thoughts ~ spells ~ seeds ~ anything</div>
+      <textarea class="journal-textarea" id="notesText" placeholder="Write freely here…" style="min-height:200px" oninput="saveNotes(); autoResize(this)"></textarea>
+    </div>
   </div>
 </div>
 
@@ -780,22 +786,23 @@ let calSelectedDay = null;
 
 function showGrimoireTab(tab) {
   _grimoireTab = tab;
-  document.getElementById('tabEntries').classList.toggle('active', tab === 'entries');
+  document.getElementById('tabEntries').classList.toggle('active',  tab === 'entries');
   document.getElementById('tabCalendar').classList.toggle('active', tab === 'calendar');
+  document.getElementById('tabNotes').classList.toggle('active',    tab === 'notes');
   document.getElementById('grimoireEntries').style.display  = tab === 'entries'  ? '' : 'none';
   const calEl = document.getElementById('grimoireCalendar');
   calEl.style.display = tab === 'calendar' ? 'flex' : 'none';
+  const notesEl = document.getElementById('grimoireNotes');
+  notesEl.style.display = tab === 'notes' ? 'flex' : 'none';
   if (tab === 'calendar') renderCalendar(calSelectedDay);
+  if (tab === 'notes') {
+    const ta = document.getElementById('notesText');
+    ta.value = localStorage.getItem('witch-notes') || '';
+    autoResize(ta);
+  }
 }
 
-function openGrimoire() {
-  _grimoireTab = 'entries';
-  calSelectedDay = null;
-  document.getElementById('tabEntries').classList.add('active');
-  document.getElementById('tabCalendar').classList.remove('active');
-  document.getElementById('grimoireEntries').style.display = '';
-  document.getElementById('grimoireCalendar').style.display = 'none';
-
+function buildEntriesHtml() {
   const container = document.getElementById('grimoireEntries');
   const entries = [];
   for (let i = 0; i < CARDS.length; i++) {
@@ -803,24 +810,54 @@ function openGrimoire() {
     const done = localStorage.getItem(completedKey(i));
     if (text || done) entries.push({ idx: i, text: text || '', done: done || '' });
   }
-  if (entries.length === 0) {
-    container.innerHTML = '<div class="grimoire-empty">Your grimoire is waiting. Draw a card and write your first entry.</div>';
-  } else {
-    entries.sort((a, b) => (b.done ? 1 : 0) - (a.done ? 1 : 0) || a.idx - b.idx);
-    container.innerHTML = entries.map(e => {
-      const c = CARDS[e.idx];
-      return `<div class="grimoire-entry">
-        <div class="grimoire-entry-header">
-          <span class="grimoire-entry-theme" style="color:${c.accent}">${c.symbol} ${escHtml(c.name)}</span>
-          <span class="grimoire-entry-date">${e.done ? escHtml(e.done) : 'In progress'}</span>
-        </div>
-        <div class="grimoire-entry-prompt">${escHtml(c.prompt)}</div>
-        ${e.text ? `<div class="grimoire-entry-text">${escHtml(e.text)}</div>` : ''}
-        <button class="grimoire-revisit" onclick="revisitCard(${e.idx})">Return to this card ✦</button>
-      </div>`;
-    }).join('');
-  }
+  if (entries.length === 0) return false;
+  entries.sort((a, b) => (b.done ? 1 : 0) - (a.done ? 1 : 0) || a.idx - b.idx);
+  container.innerHTML = entries.map(e => {
+    const c = CARDS[e.idx];
+    return `<div class="grimoire-entry">
+      <div class="grimoire-entry-header">
+        <span class="grimoire-entry-theme" style="color:${c.accent}">${c.symbol} ${escHtml(c.name)}</span>
+        <span class="grimoire-entry-date">${e.done ? escHtml(e.done) : 'In progress'}</span>
+      </div>
+      <div class="grimoire-entry-prompt">${escHtml(c.prompt)}</div>
+      ${e.text ? `<div class="grimoire-entry-text">${escHtml(e.text)}</div>` : ''}
+      <button class="grimoire-revisit" onclick="revisitCard(${e.idx})">Return to this card ✦</button>
+    </div>`;
+  }).join('');
+  return true;
+}
+
+function openGrimoire() {
+  calSelectedDay = null;
+  const hasEntries = buildEntriesHtml();
+  const startTab = hasEntries ? 'entries' : 'calendar';
+  _grimoireTab = startTab;
+  ['entries','calendar','notes'].forEach(t => {
+    document.getElementById('tab' + t.charAt(0).toUpperCase() + t.slice(1)).classList.toggle('active', t === startTab);
+  });
+  document.getElementById('grimoireEntries').style.display  = startTab === 'entries'  ? '' : 'none';
+  document.getElementById('grimoireCalendar').style.display = startTab === 'calendar' ? 'flex' : 'none';
+  document.getElementById('grimoireNotes').style.display    = 'none';
+  if (startTab === 'calendar') renderCalendar(null);
   document.getElementById('grimoireModal').classList.add('open');
+}
+
+function openGrimoireCalendar() {
+  calSelectedDay = null;
+  buildEntriesHtml();
+  _grimoireTab = 'calendar';
+  document.getElementById('tabEntries').classList.remove('active');
+  document.getElementById('tabCalendar').classList.add('active');
+  document.getElementById('tabNotes').classList.remove('active');
+  document.getElementById('grimoireEntries').style.display  = 'none';
+  document.getElementById('grimoireCalendar').style.display = 'flex';
+  document.getElementById('grimoireNotes').style.display    = 'none';
+  renderCalendar(null);
+  document.getElementById('grimoireModal').classList.add('open');
+}
+
+function saveNotes() {
+  localStorage.setItem('witch-notes', document.getElementById('notesText').value);
 }
 
 function parseDoneDate(str) {
