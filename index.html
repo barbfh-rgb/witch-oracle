@@ -1,0 +1,947 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>The Witch's Oracle</title>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@400;700&family=Cinzel:wght@400;600&family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400;1,500&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+
+    :root {
+      --gold:  #c9a84c;
+      --gold2: #e8c96a;
+      --mist:  #e8dff5;
+      --soft:  #9b80c4;
+    }
+
+    body {
+      min-height:100vh;
+      background: radial-gradient(ellipse at 40% 20%, #1e0a3a 0%, #0e0720 45%, #05030f 100%);
+      display:flex; flex-direction:column;
+      align-items:center; justify-content:center;
+      font-family:'Cormorant Garamond',serif;
+      color:var(--mist); padding:1rem;
+    }
+
+    /* ── Stars ───────────────────────────────── */
+    #sky { position:fixed; inset:0; pointer-events:none; z-index:0; overflow:hidden; }
+    .s { position:absolute; border-radius:50%; background:#fff;
+         animation:tw var(--d) ease-in-out infinite var(--dl); }
+    @keyframes tw { 0%,100%{opacity:.08} 50%{opacity:.9} }
+
+    /* ── Page ────────────────────────────────── */
+    .page {
+      position:relative; z-index:1;
+      display:flex; flex-direction:column; align-items:center;
+      width:100%; max-width:420px;
+      margin:0 auto; text-align:center;
+      gap:.4rem;
+    }
+
+    header { text-align:center; width:100%; }
+    .app-title {
+      font-family:'Cinzel Decorative',cursive;
+      font-size:clamp(1.1rem,4vw,1.6rem); font-weight:400;
+      color:var(--gold2);
+      text-shadow:0 0 28px rgba(200,168,76,.5), 0 0 60px rgba(140,60,200,.3);
+      letter-spacing:.06em; line-height:1.3;
+    }
+    .app-sub {
+      font-family:'Cinzel',serif; font-size:.62rem; letter-spacing:.2em;
+      text-transform:uppercase; color:#c4aae8; margin-top:.3rem;
+    }
+    .about-link {
+      font-family:'Cinzel',serif; font-size:.6rem; letter-spacing:.16em;
+      text-transform:uppercase; color:var(--gold2); opacity:.85;
+      margin-top:.4rem; cursor:pointer; background:none; border:none;
+      display:inline-block; transition:opacity .2s;
+    }
+    .about-link:hover { opacity:1; }
+
+    /* ── Moon phase ──────────────────────────────── */
+    .moon-strip {
+      font-family:'Cinzel',serif; font-size:.6rem; letter-spacing:.14em;
+      text-transform:uppercase; color:rgba(200,170,240,.7);
+      margin-top:.5rem; display:flex; align-items:center;
+      justify-content:center; gap:.5rem;
+    }
+    .moon-symbol { font-size:1rem; line-height:1; }
+
+    /* ── Journal section ─────────────────────────── */
+    .journal-section {
+      width:100%; max-width:340px;
+      display:none; flex-direction:column; gap:.8rem;
+      margin-top:.4rem;
+    }
+    .journal-section.visible { display:flex; }
+    .journal-textarea {
+      width:100%; min-height:100px;
+      background:rgba(255,255,255,.04);
+      border:1px solid rgba(201,168,76,.25);
+      border-radius:10px; color:rgba(245,238,255,.9);
+      font-family:'Cormorant Garamond',serif; font-size:.95rem;
+      line-height:1.7; padding:.8rem 1rem; resize:none; outline:none;
+      transition:border-color .2s; overflow:hidden;
+    }
+    .journal-textarea::placeholder { color:rgba(200,170,240,.35); font-style:italic; }
+    .journal-textarea:focus { border-color:rgba(201,168,76,.55); }
+    .journal-footer {
+      display:flex; align-items:center; justify-content:space-between;
+      gap:.6rem;
+    }
+    .completed-stamp {
+      font-family:'Cinzel',serif; font-size:.58rem; letter-spacing:.12em;
+      color:rgba(201,168,76,.6); font-style:normal;
+    }
+    .complete-btn {
+      font-family:'Cinzel',serif; font-size:.58rem; letter-spacing:.14em;
+      text-transform:uppercase; padding:.4rem .9rem; border-radius:20px;
+      border:1px solid rgba(201,168,76,.3); background:rgba(201,168,76,.05);
+      color:var(--gold2); cursor:pointer; transition:all .2s; white-space:nowrap;
+    }
+    .complete-btn:hover { background:rgba(201,168,76,.14); border-color:rgba(201,168,76,.6); }
+
+    /* ── Card stage ──────────────────────────── */
+    .stage {
+      width:280px; height:420px;
+      cursor:pointer; position:relative;
+    }
+    .card {
+      width:100%; height:100%; position:relative;
+    }
+
+    .face {
+      position:absolute; inset:0; border-radius:14px;
+      overflow:hidden;
+      border:1px solid rgba(201,168,76,.4);
+      box-shadow:0 8px 40px rgba(20,5,50,.7);
+    }
+
+    /* ── Card back ───────────────────────────── */
+    .back {
+      background:linear-gradient(160deg, #1c1030 0%, #120c20 60%, #0c0818 100%);
+      display:flex; flex-direction:column;
+      align-items:center; justify-content:center;
+      gap:.7rem; padding:1.5rem;
+    }
+    .back::before {
+      content:''; position:absolute; inset:10px;
+      border:1px solid rgba(201,168,76,.25); border-radius:8px;
+      pointer-events:none;
+    }
+    .back::after {
+      content:''; position:absolute; inset:16px;
+      border:1px solid rgba(201,168,76,.1); border-radius:6px;
+      pointer-events:none;
+    }
+    .back-glow {
+      position:absolute; inset:0; border-radius:14px;
+      background:radial-gradient(ellipse at 50% 55%, rgba(120,50,200,.18) 0%, transparent 70%);
+      pointer-events:none;
+    }
+    .back-img {
+      width:220px; height:240px;
+      background:url('cauldron.png') center center / contain no-repeat;
+      position:relative; z-index:1;
+      filter:drop-shadow(0 0 18px rgba(140,70,220,.45));
+      animation:cauldronpulse 5s ease-in-out infinite;
+    }
+    @keyframes cauldronpulse {
+      0%,100%{filter:drop-shadow(0 0 12px rgba(120,50,200,.35)); transform:scale(1)}
+      50%    {filter:drop-shadow(0 0 28px rgba(160,80,240,.65)); transform:scale(1.03)}
+    }
+    .back-hint {
+      font-family:'Cinzel',serif; font-size:.58rem; letter-spacing:.22em;
+      text-transform:uppercase; color:rgba(200,170,240,.85);
+      position:relative; z-index:1;
+    }
+
+    /* back corner ornaments */
+    .c { position:absolute; color:rgba(201,168,76,.5); font-size:.7rem; z-index:2; line-height:1; }
+    .c-tl { top:14px; left:16px; }
+    .c-tr { top:14px; right:16px; }
+    .c-bl { bottom:14px; left:16px; }
+    .c-br { bottom:14px; right:16px; }
+
+    /* ── Card front ──────────────────────────── */
+    .front {
+      background:linear-gradient(160deg, #1a1030 0%, #100c20 60%, #0c0818 100%);
+      display:none; flex-direction:column;
+      align-items:center; justify-content:space-evenly;
+      padding:1.4rem 1.4rem;
+      gap:0;
+    }
+    .card.flipped .front { display:flex; }
+    .card.flipped .back  { display:none; }
+    .front::before {
+      content:''; position:absolute; inset:10px;
+      border:1px solid rgba(201,168,76,.18); border-radius:8px; pointer-events:none;
+    }
+    .front-glow {
+      position:absolute; inset:0; border-radius:14px;
+      background:radial-gradient(ellipse at 50% 40%, rgba(100,40,180,.1) 0%, transparent 65%);
+      pointer-events:none;
+    }
+
+    .theme-symbol {
+      font-size:1.8rem; line-height:1; position:relative; z-index:1;
+      filter:drop-shadow(0 0 8px rgba(201,168,76,.4));
+    }
+    .theme-name {
+      font-family:'Cinzel',serif; font-size:.68rem; font-weight:600;
+      letter-spacing:.18em; text-transform:uppercase;
+      text-align:center; line-height:1.5;
+      position:relative; z-index:1;
+      filter:brightness(1.3);
+    }
+    .card-rule {
+      width:70%; height:1px; flex-shrink:0;
+      background:linear-gradient(to right, transparent, rgba(201,168,76,.35), transparent);
+      position:relative; z-index:1;
+    }
+    .card-rule-ornament {
+      text-align:center; font-size:.65rem; margin-top:-.6rem;
+      color:rgba(201,168,76,.5); line-height:1; position:relative; z-index:1;
+    }
+    .prompt-text {
+      font-size:1rem; font-style:italic; font-weight:400;
+      line-height:1.8; text-align:center;
+      color:rgba(245,238,255,.98);
+      position:relative; z-index:1;
+      overflow-y:auto; max-height:200px; width:100%;
+    }
+    .prompt-text::-webkit-scrollbar { width:2px; }
+    .prompt-text::-webkit-scrollbar-thumb { background:rgba(201,168,76,.2); }
+
+    /* ── Hint & buttons ──────────────────────── */
+    .hint {
+      font-family:'Cinzel',serif; font-size:.65rem; letter-spacing:.1em;
+      color:#c4aae8; text-align:center; min-height:1em;
+      width:100%;
+    }
+    .btn-row { display:flex; gap:.8rem; flex-wrap:wrap; justify-content:center; }
+    .btn {
+      font-family:'Cinzel',serif; font-size:.62rem; letter-spacing:.16em;
+      text-transform:uppercase; padding:.5rem 1.2rem; border-radius:24px;
+      border:1px solid rgba(201,168,76,.35); background:rgba(201,168,76,.05);
+      color:var(--gold2); cursor:pointer; transition:all .25s;
+    }
+    .btn:hover {
+      background:rgba(201,168,76,.14); border-color:rgba(201,168,76,.7);
+      box-shadow:0 0 14px rgba(201,168,76,.18); transform:translateY(-2px);
+    }
+    .btn:active { transform:translateY(0); }
+
+    /* ── About modal ─────────────────────────── */
+    .about-modal {
+      display:none; position:fixed; inset:0; z-index:200;
+      background:rgba(6,2,16,.94); overflow-y:auto;
+      padding:2rem 1.2rem; align-items:flex-start; justify-content:center;
+    }
+    .about-modal.open { display:flex; }
+    .about-inner {
+      width:100%; max-width:420px; margin:auto;
+      border:1px solid rgba(201,168,76,.22); border-radius:14px;
+      padding:2rem 1.6rem 1.8rem;
+      background:rgba(16,8,30,.97);
+      display:flex; flex-direction:column; gap:1.1rem; position:relative;
+    }
+    .about-close {
+      position:absolute; top:.8rem; right:.9rem;
+      background:none; border:none; color:rgba(201,168,76,.5);
+      font-size:1.1rem; cursor:pointer; transition:color .2s;
+    }
+    .about-close:hover { color:var(--gold2); }
+    .about-title {
+      font-family:'Cinzel Decorative',cursive; font-size:.9rem;
+      color:var(--gold2); text-align:center; letter-spacing:.06em;
+    }
+    .about-text {
+      font-size:.88rem; line-height:1.85;
+      color:rgba(242,235,255,.95); text-align:center;
+    }
+    .about-text em { color:var(--gold2); font-style:normal; }
+    .about-divider {
+      height:1px; width:55%; margin:0 auto;
+      background:linear-gradient(to right,transparent,rgba(201,168,76,.28),transparent);
+    }
+    .about-how {
+      font-family:'Cinzel',serif; font-size:.6rem; letter-spacing:.2em;
+      text-transform:uppercase; color:rgba(201,168,76,.6); text-align:center;
+    }
+    .about-how-text {
+      font-size:.88rem; font-style:italic; line-height:1.85;
+      color:rgba(242,235,255,.95); text-align:center;
+    }
+
+    /* ── Grimoire modal ──────────────────────────── */
+    .grimoire-modal {
+      display:none; position:fixed; inset:0; z-index:200;
+      background:rgba(6,2,16,.94); overflow-y:auto;
+      padding:2rem 1.2rem;
+    }
+    .grimoire-modal.open { display:block; }
+    .grimoire-inner {
+      width:100%; max-width:420px; margin:0 auto;
+      border:1px solid rgba(201,168,76,.22); border-radius:14px;
+      padding:2rem 1.6rem 1.8rem;
+      background:rgba(16,8,30,.97);
+      display:flex; flex-direction:column; gap:1.2rem; position:relative;
+    }
+    .grimoire-title {
+      font-family:'Cinzel Decorative',cursive; font-size:.9rem;
+      color:var(--gold2); text-align:center; letter-spacing:.06em;
+    }
+    .grimoire-empty {
+      font-size:.88rem; font-style:italic; line-height:1.85;
+      color:rgba(200,170,240,.6); text-align:center; padding:1rem 0;
+    }
+    .grimoire-entry {
+      border:1px solid rgba(201,168,76,.15); border-radius:10px;
+      padding:.9rem 1rem; display:flex; flex-direction:column; gap:.5rem;
+      background:rgba(255,255,255,.02);
+    }
+    .grimoire-entry-header {
+      display:flex; align-items:flex-start; justify-content:space-between; gap:.5rem;
+    }
+    .grimoire-entry-theme {
+      font-family:'Cinzel',serif; font-size:.58rem; letter-spacing:.14em;
+      text-transform:uppercase; opacity:.8; line-height:1.5;
+    }
+    .grimoire-entry-date {
+      font-family:'Cinzel',serif; font-size:.56rem; letter-spacing:.1em;
+      color:rgba(201,168,76,.6); white-space:nowrap; flex-shrink:0;
+    }
+    .grimoire-entry-prompt {
+      font-size:.88rem; font-style:italic; line-height:1.7;
+      color:rgba(245,238,255,.9);
+    }
+    .grimoire-entry-text {
+      font-size:.84rem; line-height:1.75; color:rgba(200,180,240,.8);
+      border-top:1px solid rgba(201,168,76,.1); padding-top:.5rem;
+      white-space:pre-wrap; word-break:break-word;
+    }
+    .grimoire-revisit {
+      font-family:'Cinzel',serif; font-size:.56rem; letter-spacing:.14em;
+      text-transform:uppercase; color:var(--gold2); opacity:.65;
+      background:none; border:none; cursor:pointer; padding:0;
+      text-align:right; align-self:flex-end; transition:opacity .2s;
+    }
+    .grimoire-revisit:hover { opacity:1; }
+
+    /* ── Grimoire tabs ───────────────────────────── */
+    .grimoire-tabs {
+      display:flex; gap:.5rem; justify-content:center;
+    }
+    .grimoire-tab {
+      font-family:'Cinzel',serif; font-size:.58rem; letter-spacing:.16em;
+      text-transform:uppercase; padding:.35rem .9rem; border-radius:20px;
+      border:1px solid rgba(201,168,76,.22); background:transparent;
+      color:rgba(201,168,76,.55); cursor:pointer; transition:all .2s;
+    }
+    .grimoire-tab.active {
+      background:rgba(201,168,76,.12); border-color:rgba(201,168,76,.55);
+      color:var(--gold2);
+    }
+
+    /* ── Calendar ────────────────────────────────── */
+    .cal-nav {
+      display:flex; align-items:center; justify-content:space-between;
+      font-family:'Cinzel',serif; font-size:.7rem; letter-spacing:.14em;
+      text-transform:uppercase; color:var(--gold2);
+    }
+    .cal-arrow {
+      background:none; border:none; color:rgba(201,168,76,.55);
+      font-size:1.1rem; cursor:pointer; padding:.2rem .5rem; transition:color .2s;
+      line-height:1;
+    }
+    .cal-arrow:hover { color:var(--gold2); }
+    .cal-grid {
+      display:grid; grid-template-columns:repeat(7,1fr); gap:2px;
+      text-align:center;
+    }
+    .cal-label {
+      font-family:'Cinzel',serif; font-size:.5rem; letter-spacing:.1em;
+      color:rgba(201,168,76,.35); padding:.35rem 0; text-transform:uppercase;
+    }
+    .cal-day {
+      font-family:'Cinzel',serif; font-size:.7rem;
+      padding:.45rem .1rem; border-radius:6px;
+      color:rgba(200,180,240,.35); position:relative;
+    }
+    .cal-day.has-entry {
+      color:var(--gold2); cursor:pointer; background:rgba(201,168,76,.07);
+    }
+    .cal-day.has-entry:hover { background:rgba(201,168,76,.18); }
+    .cal-day.today::after {
+      content:''; position:absolute; bottom:3px; left:50%;
+      transform:translateX(-50%);
+      width:3px; height:3px; border-radius:50%;
+      background:rgba(200,170,240,.5);
+    }
+    .cal-day.selected {
+      background:rgba(201,168,76,.22) !important;
+      color:var(--gold2);
+    }
+    .cal-day-entries { display:flex; flex-direction:column; gap:.6rem; margin-top:.4rem; }
+    .cal-day-heading {
+      font-family:'Cinzel',serif; font-size:.6rem; letter-spacing:.18em;
+      text-transform:uppercase; color:rgba(201,168,76,.65); text-align:center;
+    }
+  </style>
+</head>
+<body>
+
+<div id="sky"></div>
+
+<div class="page">
+
+  <header>
+    <div class="app-title">The Witch's Oracle</div>
+    <div class="app-sub">Acknowledge ✦ Believe ✦ Create</div>
+    <div class="moon-strip"><span class="moon-symbol" id="moonSymbol"></span><span id="moonName"></span></div>
+    <button class="about-link" onclick="toggleAbout()">About this Oracle</button>
+  </header>
+
+  <div class="stage" id="stage" onclick="onCardClick()">
+    <div class="card" id="card">
+
+      <!-- Back -->
+      <div class="face back">
+        <div class="back-glow"></div>
+        <span class="c c-tl">✦</span>
+        <span class="c c-tr">✦</span>
+        <span class="c c-bl">✦</span>
+        <span class="c c-br">✦</span>
+        <div class="back-img"></div>
+      </div>
+
+      <!-- Front -->
+      <div class="face front">
+        <div class="front-glow"></div>
+        <span class="c c-tl">✦</span>
+        <span class="c c-tr">✦</span>
+        <span class="c c-bl">✦</span>
+        <span class="c c-br">✦</span>
+        <div class="theme-symbol" id="themeSymbol"></div>
+        <div class="theme-name"   id="themeName"></div>
+        <div class="card-rule"></div>
+        <div class="card-rule-ornament">✦</div>
+        <div class="prompt-text"  id="promptText"></div>
+      </div>
+
+    </div>
+  </div>
+
+  <p class="hint" id="hint">Touch the card to draw your prompt</p>
+
+  <div class="btn-row">
+    <button class="btn" onclick="newReading()">✦ Draw Again</button>
+    <button class="btn" onclick="openGrimoire()">✦ My Grimoire</button>
+  </div>
+
+  <div class="journal-section" id="journalSection">
+    <textarea class="journal-textarea" id="journalText" placeholder="Write your thoughts here…" oninput="saveJournal(); autoResize(this)"></textarea>
+    <div class="journal-footer">
+      <span class="completed-stamp" id="completedStamp"></span>
+      <button class="complete-btn" onclick="markCompleted()">✦ Finished with Flourish</button>
+    </div>
+  </div>
+
+</div>
+
+<!-- Grimoire modal -->
+<div class="grimoire-modal" id="grimoireModal" onclick="closeGrimoireOutside(event)">
+  <div class="grimoire-inner">
+    <button class="about-close" onclick="closeGrimoire()">✕</button>
+    <div class="grimoire-title">My Grimoire</div>
+    <div class="grimoire-tabs">
+      <button class="grimoire-tab active" id="tabEntries"   onclick="showGrimoireTab('entries')">Entries</button>
+      <button class="grimoire-tab"        id="tabCalendar"  onclick="showGrimoireTab('calendar')">Calendar</button>
+    </div>
+    <div id="grimoireEntries"></div>
+    <div id="grimoireCalendar" style="display:none;flex-direction:column;gap:.8rem"></div>
+  </div>
+</div>
+
+<!-- About modal -->
+<div class="about-modal" id="aboutModal" onclick="closeAboutOutside(event)">
+  <div class="about-inner">
+    <button class="about-close" onclick="toggleAbout()">✕</button>
+
+    <div class="about-title">The Witch's Oracle</div>
+
+    <div class="about-text">
+      Your prompt tool for reflection, journaling, meditation and quiet thought.
+    </div>
+
+    <div class="about-text">
+      Draw one prompt when you want something to ponder, journal with, meditate on or carry through your day.
+    </div>
+
+    <div class="about-divider"></div>
+
+    <div class="about-text">
+      You do not have to answer it perfectly. You do not have to answer it all at once. Let the prompt be a small doorway. You might write about it, sit with it beside a candle, use it as a spell seed, take it for a walk or simply notice what thoughts and feelings arise.
+    </div>
+
+    <div class="about-divider"></div>
+
+    <div class="about-text">
+      Some prompts are light and curious. Some may lead into shadow work, memory or healing. Take what feels useful. Leave what does not. Return when you are ready.
+    </div>
+
+    <div class="about-divider"></div>
+
+    <div class="about-how">How to use this</div>
+    <div class="about-how-text">
+      Choose a prompt at random. It will be the best one for you in that moment ✨
+    </div>
+
+  </div>
+</div>
+
+<script>
+// ── Themes & Prompts ──────────────────────────────────────────────────────────
+const THEMES = [
+  {
+    name: 'Beginnings, Beliefs & Magical Identity',
+    symbol: '🌙', accent: '#b8a0d4',
+    prompts: [
+      'What inspired me to start practising witchcraft?',
+      'Describe my first magical experience.',
+      'What does the concept of magic mean to me?',
+      'Explore my personal beliefs and spiritual path.',
+      'What are my favourite magical tools or items?',
+      'What are my personal ethics and guidelines for practising magic?',
+      'How do I handle scepticism or criticism from others about my practice?',
+      'Write about a time when I felt confused about being a witch. What did I learn from it?',
+      'Describe the most challenging aspect of my magical journey so far.',
+      'Set specific goals for my magical growth and learning, then track my progress.'
+    ]
+  },
+  {
+    name: 'Tools, Practices & Everyday Magic',
+    symbol: '🕯', accent: '#c8964a',
+    prompts: [
+      'Research and journal about a specific herb, crystal or symbol.',
+      'How do I use divination tools such as tarot cards, oracle cards or runes?',
+      'Write a spell for a specific intention and record the results.',
+      'How do I use candles, incense or oils in my practice?',
+      'How do I use sound or music in my magical practice?',
+      'Write about my experiences with rituals or ceremonies.',
+      'Write about my experiences with crystal grids or crystal layouts.',
+      'Write about my experiences with scrying, mirror gazing or crystal ball reading.',
+      'Explore the concept of kitchen witchery and culinary magic.',
+      'Describe a ritual or spell that I feel drawn to but have been hesitant to perform. What fears or doubts are holding me back?'
+    ]
+  },
+  {
+    name: 'Nature, Seasons & the Wider Web of Life',
+    symbol: '🌿', accent: '#7aaf82',
+    prompts: [
+      'Explore the elements: earth, air, fire and water, and their significance to me.',
+      'How do I work with the elements in my spells and rituals?',
+      'How do I connect with the moon phases and their energies?',
+      'Describe my experiences with lunar and solar magic.',
+      'Explore the Wheel of the Year and its significance in my life.',
+      'How do I celebrate the sabbats and esbats in my practice?',
+      'How do I connect with nature and the cycles of the seasons?',
+      'Describe a memorable encounter with an animal and its significance.',
+      'Explore the concept of the witch\'s familiar and its role in magic.',
+      'Write about a transformative experience with nature that helped me understand myself more deeply.'
+    ]
+  },
+  {
+    name: 'Energy, Intuition & Inner Awareness',
+    symbol: '✦', accent: '#6bb8d4',
+    prompts: [
+      'Reflect on my personal energy and how I can understand, protect and work with it.',
+      'What does energy work mean to me, and how do I practise it?',
+      'How do I protect my energy and space when working with magic?',
+      'Reflect on the role of intuition in my magical practice.',
+      'Explore the concept of the chakras and their alignment in magic.',
+      'Reflect on the significance of colours in my magical work.',
+      'Write about my experiences with meditation and visualisation.',
+      'How do I integrate mindfulness and gratitude into my daily life as a witch?',
+      'Reflect on the concept of balance and harmony in my life and practice.',
+      'How do I adapt my practice to different phases of life or personal challenges?'
+    ]
+  },
+  {
+    name: 'Dreams, Symbols & Spirit Connections',
+    symbol: '☽', accent: '#9080c4',
+    prompts: [
+      'Record my dreams and explore any recurring symbols, themes or messages.',
+      'Record any synchronicities or signs I have encountered in my journey.',
+      'Describe a magical journey, pathworking or astral projection experience.',
+      'What deities, mythical figures or spiritual presences do I feel drawn to, and why?',
+      'Reflect on the connection between astrology and my magical practice.',
+      'Explore my ancestral heritage and its connection to witchcraft.',
+      'Research a historical witch trial or famous witch and share my thoughts.',
+      'Describe my favourite magical books or resources.',
+      'Reflect on the importance of community and finding like-minded witches.',
+      'Think of a time when I felt most connected to my witch roots. How can I recreate or deepen that connection?'
+    ]
+  },
+  {
+    name: 'Shadow Self, Healing & Integration',
+    symbol: '🖤', accent: '#c4607a',
+    prompts: [
+      'Explore the idea of the shadow self and its importance in self-discovery.',
+      'Think of a time when I felt disconnected from my inner witch. What were the circumstances, and how did it affect me?',
+      'Identify an aspect of my shadow self that I have been reluctant to acknowledge. How can I begin integrating this part of myself?',
+      'Write about a past experience that made me question my power as a witch. How can I reframe it?',
+      'Imagine meeting my shadow self as a separate being. What would I say, and what might they say in return?',
+      'Identify any limiting beliefs I hold about my abilities as a witch. What steps can I take to release them?',
+      'List three ways I can honour my shadow self in my witch practices.',
+      'Reflect on a part of my witch path that I have been avoiding. What fears or insecurities are connected to it?',
+      'Describe a safe space, real or imagined, where I can connect with my shadow self.',
+      'Identify a symbol or totem that represents my shadow self. How can I incorporate it into rituals or meditation?',
+      'List five affirmations that can help me embrace and heal my shadow self.',
+      'Describe a ritual or spell designed to heal and integrate my shadow self.',
+      'What are the most significant fears I hold about embracing my full witch potential?',
+      'Write about an instance where I felt guilt related to my witch practices. How can I transform those feelings?',
+      'Identify a habit or behaviour that holds me back from my full witch potential. How can I transform or release it?',
+      'Reflect on how societal norms and expectations have shaped my shadow self.',
+      'Imagine creating a protective charm or talisman for shadow self-healing. What would it include?',
+      'Write a conversation between my conscious self and my shadow self.',
+      'What role does forgiveness play in healing my shadow self?',
+      'Reflect on how my physical environment affects my magic, mood and shadow self. What changes would make it feel more beautiful and supportive?'
+    ]
+  },
+  {
+    name: 'Empowerment, Creativity & Future Growth',
+    symbol: '⚡', accent: '#c9a84c',
+    prompts: [
+      'List three qualities I admire in other witches. How can I nurture these qualities within myself?',
+      'Create a visualisation of my most empowered witch self. How do I look, feel and act?',
+      'Write about a time when I used my witch practices to overcome a personal challenge. What did I learn about my resilience and power?',
+      'Reflect on a powerful moment in my witch practice that reaffirmed my path.',
+      'Write about a challenging relationship or interaction that has affected my witch path. How can I use my wisdom to heal and grow from it?',
+      'Write about the role of gratitude and manifestation in my magic.',
+      'Write a letter to your future self, offering guidance and support from your current understanding of your shadow self.'
+    ]
+  }
+];
+
+// Flatten all cards
+const CARDS = THEMES.flatMap(t =>
+  t.prompts.map(p => ({ name: t.name, symbol: t.symbol, accent: t.accent, prompt: p }))
+);
+
+// ── State ─────────────────────────────────────────────────────────────────────
+let flipped = false, currentIdx = 0;
+
+function todayKey() {
+  const d = new Date();
+  return `wp_day_${d.getFullYear()}_${d.getMonth()}_${d.getDate()}`;
+}
+function getDailyIdx() {
+  const k = todayKey(), v = localStorage.getItem(k);
+  if (v !== null) return +v;
+  const idx = Math.floor(Math.random() * CARDS.length);
+  localStorage.setItem(k, idx); return idx;
+}
+
+// ── Show card ─────────────────────────────────────────────────────────────────
+function showCard(idx) {
+  currentIdx = idx;
+  const c = CARDS[idx];
+  document.getElementById('themeSymbol').textContent = c.symbol;
+  document.getElementById('themeName').textContent   = c.name;
+  document.getElementById('themeName').style.color   = c.accent;
+  document.getElementById('promptText').textContent  = c.prompt;
+}
+
+// ── Flip ──────────────────────────────────────────────────────────────────────
+function animateFlip(onMidpoint, onDone) {
+  const card = document.getElementById('card');
+  card.style.transition = 'transform .22s ease-in';
+  card.style.transform   = 'scaleX(0)';
+  setTimeout(() => {
+    onMidpoint();
+    card.style.transition = 'transform .22s ease-out';
+    card.style.transform   = 'scaleX(1)';
+    setTimeout(() => {
+      card.style.transition = '';
+      card.style.transform   = '';
+      if (onDone) onDone();
+    }, 240);
+  }, 230);
+}
+
+function flip() {
+  animateFlip(() => {
+    document.getElementById('card').classList.add('flipped');
+    document.getElementById('hint').textContent = 'Sit with this ✦';
+    document.getElementById('stage').style.cursor = 'default';
+    flipped = true;
+    loadJournal(currentIdx);
+  });
+}
+
+function onCardClick() { if (!flipped) flip(); }
+function newReading() {
+  const idx = Math.floor(Math.random() * CARDS.length);
+  animateFlip(() => {
+    showCard(idx);
+    document.getElementById('card').classList.add('flipped');
+    document.getElementById('hint').textContent = 'Sit with this ✦';
+    document.getElementById('stage').style.cursor = 'default';
+    flipped = true;
+    loadJournal(idx);
+  });
+}
+
+// ── About ─────────────────────────────────────────────────────────────────────
+function toggleAbout() { document.getElementById('aboutModal').classList.toggle('open'); }
+function closeAboutOutside(e) {
+  if (e.target === document.getElementById('aboutModal')) toggleAbout();
+}
+
+// ── Stars ─────────────────────────────────────────────────────────────────────
+function buildSky() {
+  const f = document.createDocumentFragment();
+  for (let i = 0; i < 120; i++) {
+    const s = document.createElement('div');
+    s.className = 's';
+    const sz = Math.random() * 2 + .4;
+    Object.assign(s.style, {
+      width:sz+'px', height:sz+'px',
+      top:Math.random()*100+'%', left:Math.random()*100+'%',
+      '--d':(Math.random()*5+2)+'s', '--dl':(Math.random()*7)+'s',
+    });
+    f.appendChild(s);
+  }
+  document.getElementById('sky').appendChild(f);
+}
+
+// ── Moon phase (northern hemisphere) ─────────────────────────────────────────
+function getMoonPhase() {
+  const knownNew = new Date(2000, 0, 6);
+  const cycle = 29.53059;
+  const days = (Date.now() - knownNew) / 86400000;
+  const phase = ((days % cycle) + cycle) % cycle;
+  if (phase < 1.85)  return { name: 'New Moon',        symbol: '🌑' };
+  if (phase < 7.38)  return { name: 'Waxing Crescent', symbol: '🌒' };
+  if (phase < 9.22)  return { name: 'First Quarter',   symbol: '🌓' };
+  if (phase < 14.77) return { name: 'Waxing Gibbous',  symbol: '🌔' };
+  if (phase < 16.61) return { name: 'Full Moon',       symbol: '🌕' };
+  if (phase < 22.15) return { name: 'Waning Gibbous',  symbol: '🌖' };
+  if (phase < 23.99) return { name: 'Last Quarter',    symbol: '🌗' };
+  return                     { name: 'Waning Crescent', symbol: '🌘' };
+}
+
+function renderMoon() {
+  const m = getMoonPhase();
+  document.getElementById('moonSymbol').textContent = m.symbol;
+  document.getElementById('moonName').textContent   = m.name;
+}
+
+// ── Journal ───────────────────────────────────────────────────────────────────
+function journalKey(idx)   { return 'witch-journal-' + idx; }
+function completedKey(idx) { return 'witch-done-' + idx; }
+
+function loadJournal(idx) {
+  const el = document.getElementById('journalText');
+  el.value = localStorage.getItem(journalKey(idx)) || '';
+  autoResize(el);
+  const done = localStorage.getItem(completedKey(idx));
+  document.getElementById('completedStamp').textContent = done ? 'Completed ' + done : '';
+  document.getElementById('journalSection').classList.add('visible');
+}
+
+function autoResize(el) {
+  el.style.height = 'auto';
+  el.style.height = el.scrollHeight + 'px';
+}
+
+function saveJournal() {
+  localStorage.setItem(journalKey(currentIdx), document.getElementById('journalText').value);
+}
+
+function markCompleted() {
+  const d = new Date().toLocaleDateString('en-GB', { day:'numeric', month:'short', year:'numeric' });
+  localStorage.setItem(completedKey(currentIdx), d);
+  document.getElementById('completedStamp').textContent = 'Completed ' + d;
+}
+
+// ── Grimoire ──────────────────────────────────────────────────────────────────
+function escHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+let _grimoireTab = 'entries';
+let calYear = new Date().getFullYear();
+let calMonth = new Date().getMonth();
+let calSelectedDay = null;
+
+function showGrimoireTab(tab) {
+  _grimoireTab = tab;
+  document.getElementById('tabEntries').classList.toggle('active', tab === 'entries');
+  document.getElementById('tabCalendar').classList.toggle('active', tab === 'calendar');
+  document.getElementById('grimoireEntries').style.display  = tab === 'entries'  ? '' : 'none';
+  const calEl = document.getElementById('grimoireCalendar');
+  calEl.style.display = tab === 'calendar' ? 'flex' : 'none';
+  if (tab === 'calendar') renderCalendar(calSelectedDay);
+}
+
+function openGrimoire() {
+  _grimoireTab = 'entries';
+  calSelectedDay = null;
+  document.getElementById('tabEntries').classList.add('active');
+  document.getElementById('tabCalendar').classList.remove('active');
+  document.getElementById('grimoireEntries').style.display = '';
+  document.getElementById('grimoireCalendar').style.display = 'none';
+
+  const container = document.getElementById('grimoireEntries');
+  const entries = [];
+  for (let i = 0; i < CARDS.length; i++) {
+    const text = localStorage.getItem(journalKey(i));
+    const done = localStorage.getItem(completedKey(i));
+    if (text || done) entries.push({ idx: i, text: text || '', done: done || '' });
+  }
+  if (entries.length === 0) {
+    container.innerHTML = '<div class="grimoire-empty">Your grimoire is waiting. Draw a card and write your first entry.</div>';
+  } else {
+    entries.sort((a, b) => (b.done ? 1 : 0) - (a.done ? 1 : 0) || a.idx - b.idx);
+    container.innerHTML = entries.map(e => {
+      const c = CARDS[e.idx];
+      return `<div class="grimoire-entry">
+        <div class="grimoire-entry-header">
+          <span class="grimoire-entry-theme" style="color:${c.accent}">${c.symbol} ${escHtml(c.name)}</span>
+          <span class="grimoire-entry-date">${e.done ? escHtml(e.done) : 'In progress'}</span>
+        </div>
+        <div class="grimoire-entry-prompt">${escHtml(c.prompt)}</div>
+        ${e.text ? `<div class="grimoire-entry-text">${escHtml(e.text)}</div>` : ''}
+        <button class="grimoire-revisit" onclick="revisitCard(${e.idx})">Return to this card ✦</button>
+      </div>`;
+    }).join('');
+  }
+  document.getElementById('grimoireModal').classList.add('open');
+}
+
+function parseDoneDate(str) {
+  const parts = str.trim().split(' ');
+  const mo = {Jan:0,Feb:1,Mar:2,Apr:3,May:4,Jun:5,Jul:6,Aug:7,Sep:8,Oct:9,Nov:10,Dec:11};
+  return new Date(+parts[2], mo[parts[1]], +parts[0]);
+}
+
+function getEntriesForMonth(year, month) {
+  const byDay = {};
+  for (let i = 0; i < CARDS.length; i++) {
+    const done = localStorage.getItem(completedKey(i));
+    if (!done) continue;
+    const d = parseDoneDate(done);
+    if (d.getFullYear() === year && d.getMonth() === month) {
+      const day = d.getDate();
+      if (!byDay[day]) byDay[day] = [];
+      byDay[day].push(i);
+    }
+  }
+  return byDay;
+}
+
+function renderCalendar(selectedDay) {
+  const container = document.getElementById('grimoireCalendar');
+  const byDay    = getEntriesForMonth(calYear, calMonth);
+  const today    = new Date();
+  const first    = new Date(calYear, calMonth, 1);
+  const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
+  const startOffset = (first.getDay() + 6) % 7; // Mon=0
+  const monthLabel  = first.toLocaleDateString('en-GB', { month:'long', year:'numeric' });
+
+  const dayLabels = ['Mo','Tu','We','Th','Fr','Sa','Su']
+    .map(d => `<div class="cal-label">${d}</div>`).join('');
+
+  let cells = '';
+  for (let i = 0; i < startOffset; i++) cells += '<div class="cal-day"></div>';
+  for (let d = 1; d <= daysInMonth; d++) {
+    const isToday    = d === today.getDate() && calMonth === today.getMonth() && calYear === today.getFullYear();
+    const hasEntry   = !!byDay[d];
+    const isSelected = selectedDay === d;
+    let cls = 'cal-day';
+    if (hasEntry)   cls += ' has-entry';
+    if (isToday)    cls += ' today';
+    if (isSelected) cls += ' selected';
+    cells += `<div class="${cls}"${hasEntry ? ` onclick="selectCalDay(${d})"` : ''}>${d}</div>`;
+  }
+
+  let selectedHtml = '';
+  if (selectedDay && byDay[selectedDay]) {
+    const dateLabel = new Date(calYear, calMonth, selectedDay)
+      .toLocaleDateString('en-GB', { day:'numeric', month:'long', year:'numeric' });
+    selectedHtml = `<div class="cal-day-entries">
+      <div class="cal-day-heading">${dateLabel}</div>
+      ${byDay[selectedDay].map(i => {
+        const c    = CARDS[i];
+        const text = localStorage.getItem(journalKey(i)) || '';
+        return `<div class="grimoire-entry">
+          <div class="grimoire-entry-header">
+            <span class="grimoire-entry-theme" style="color:${c.accent}">${c.symbol} ${escHtml(c.name)}</span>
+          </div>
+          <div class="grimoire-entry-prompt">${escHtml(c.prompt)}</div>
+          ${text ? `<div class="grimoire-entry-text">${escHtml(text)}</div>` : ''}
+          <button class="grimoire-revisit" onclick="revisitCard(${i})">Return to this card ✦</button>
+        </div>`;
+      }).join('')}
+    </div>`;
+  }
+
+  container.innerHTML = `
+    <div class="cal-nav">
+      <button class="cal-arrow" onclick="calPrev()">‹</button>
+      <span>${monthLabel}</span>
+      <button class="cal-arrow" onclick="calNext()">›</button>
+    </div>
+    <div class="cal-grid">${dayLabels}${cells}</div>
+    ${selectedHtml}
+  `;
+}
+
+function selectCalDay(d) {
+  calSelectedDay = d;
+  renderCalendar(d);
+}
+
+function calPrev() {
+  calSelectedDay = null;
+  if (--calMonth < 0) { calMonth = 11; calYear--; }
+  renderCalendar(null);
+}
+
+function calNext() {
+  calSelectedDay = null;
+  if (++calMonth > 11) { calMonth = 0; calYear++; }
+  renderCalendar(null);
+}
+
+function closeGrimoire() {
+  document.getElementById('grimoireModal').classList.remove('open');
+}
+
+function closeGrimoireOutside(e) {
+  if (e.target === document.getElementById('grimoireModal')) closeGrimoire();
+}
+
+function revisitCard(idx) {
+  closeGrimoire();
+  animateFlip(() => {
+    showCard(idx);
+    document.getElementById('card').classList.add('flipped');
+    document.getElementById('hint').textContent = 'Sit with this ✦';
+    document.getElementById('stage').style.cursor = 'default';
+    flipped = true;
+    loadJournal(idx);
+  });
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+renderMoon();
+buildSky();
+showCard(getDailyIdx());
+</script>
+</body>
+</html>
