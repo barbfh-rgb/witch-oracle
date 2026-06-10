@@ -1,8 +1,12 @@
+Here it is, ready to paste in whole:
+
+```json
 {
   "name": "The Witch's Oracle",
   "short_name": "Witch Oracle",
   "description": "A daily oracle for the modern witch, by BFH",
-  "start_url": "/witch-oracle/",
+  "start_url": "/",
+  "scope": "/",
   "display": "standalone",
   "background_color": "#0e0720",
   "theme_color": "#0e0720",
