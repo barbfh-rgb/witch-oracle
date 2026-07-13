@@ -394,9 +394,76 @@
       font-family:'Cinzel',serif; font-size:.6rem; letter-spacing:.18em;
       text-transform:uppercase; color:rgba(201,168,76,.65); text-align:center;
     }
+    /* ─── passcode gate (casual privacy only, not real security) ─── */
+    body.is-locked > *:not(.gate){ display:none; }
+    .gate{
+      display:none; position:fixed; inset:0; z-index:9999;
+      background: radial-gradient(ellipse at 40% 20%, #1e0a3a 0%, #0e0720 45%, #05030f 100%);
+      align-items:center; justify-content:center;
+    }
+    body.is-locked .gate{ display:flex; }
+    .gate-box{
+      display:flex; flex-direction:column; align-items:center; gap:1rem;
+      padding:2.2rem 2rem;
+      background:linear-gradient(160deg, #382560 0%, #281c4e 60%, #1c133a 100%);
+      border:1px solid var(--gold); border-radius:18px;
+      box-shadow:0 0 40px rgba(201,168,76,.25), 0 18px 50px rgba(0,0,0,.55);
+      width:min(90vw, 20rem);
+    }
+    .gate-title{
+      font-family:'Cinzel Decorative',cursive; font-size:1.15rem;
+      color:var(--gold2); text-align:center; margin:0; letter-spacing:.04em;
+    }
+    .gate-input{
+      width:100%; padding:.7rem .9rem; border-radius:10px;
+      border:1px solid rgba(201,168,76,.5); background:rgba(5,3,15,.5);
+      color:var(--mist); text-align:center; font-family:'Cinzel',serif;
+      letter-spacing:.08em; font-size:.95rem; outline:none;
+    }
+    .gate-input:focus{ border-color:var(--gold2); }
+    .gate-btn{
+      width:100%; padding:.7rem 1.3rem; border:none; border-radius:999px;
+      background:linear-gradient(160deg, #e8c96a 0%, #c9a84c 100%); color:#1c133a;
+      font-family:'Cinzel',serif; font-weight:600; letter-spacing:.14em;
+      text-transform:uppercase; font-size:.7rem; cursor:pointer; min-height:44px;
+    }
+    .gate-btn:active{ opacity:.85; }
+    .gate-error{ margin:0; min-height:1.2em; color:#e6b8d0; font-family:'Cinzel',serif;
+      font-size:.62rem; letter-spacing:.1em; }
   </style>
 </head>
-<body>
+<body class="is-locked">
+
+<div class="gate" id="gate">
+  <form class="gate-box" id="gate-form">
+    <p class="gate-title">The Witch's Oracle</p>
+    <input class="gate-input" id="gate-input" type="password" placeholder="Enter passcode" autocomplete="off" autocapitalize="off" spellcheck="false">
+    <button class="gate-btn" type="submit">Enter</button>
+    <p class="gate-error" id="gate-error"></p>
+  </form>
+</div>
+<script>
+(function () {
+  var CODE = "witchoracle11";
+  var KEY = "witch-oracle-unlocked";
+  if (localStorage.getItem(KEY) === "yes") {
+    document.body.classList.remove("is-locked");
+  }
+  document.getElementById("gate-form").addEventListener("submit", function (e) {
+    e.preventDefault();
+    var input = document.getElementById("gate-input");
+    var err = document.getElementById("gate-error");
+    if (input.value.trim().toLowerCase() === CODE) {
+      localStorage.setItem(KEY, "yes");
+      document.body.classList.remove("is-locked");
+    } else {
+      err.textContent = "Not quite, try again.";
+      input.value = "";
+      input.focus();
+    }
+  });
+})();
+</script>
 
 <div id="sky"></div>
 
