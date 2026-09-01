@@ -279,6 +279,25 @@
       font-size:.88rem; font-style:italic; line-height:1.85;
       color:rgba(242,235,255,.95); text-align:center;
     }
+    .records-text {
+      font-size:.82rem; line-height:1.8;
+      color:rgba(242,235,255,.9); text-align:left;
+    }
+    .records-text strong { color:var(--gold2); font-weight:400; }
+    .records-btns {
+      display:flex; flex-wrap:wrap; gap:.6rem; justify-content:center; margin-top:.4rem;
+    }
+    .records-btn {
+      background:rgba(201,168,76,.10);
+      border:1px solid rgba(201,168,76,.35);
+      border-radius:22px;
+      color:var(--gold2);
+      padding:.55rem 1rem;
+      font-family:'Cinzel',serif;
+      font-size:.62rem; letter-spacing:.12em; text-transform:uppercase;
+      cursor:pointer; transition:background .2s;
+    }
+    .records-btn:hover { background:rgba(201,168,76,.22); }
 
     /* ── Grimoire modal ──────────────────────────── */
     .grimoire-modal {
@@ -579,8 +598,24 @@
 
     <div class="about-divider"></div>
 
+    <div class="about-how">Your Grimoire Records</div>
+    <div class="records-text">
+      Everything you write is held on this device only. Keep a backup so nothing is lost if you change phone, clear your browser or reinstall the app.<br><br>
+      <strong>Save a backup</strong> creates a small file of all your journal entries, your notes and the cards you have marked as done. On a phone you will be offered the share sheet, so you can send it to your files, your cloud storage or your own email. On a computer it lands in your downloads folder. Do this every few weeks.<br><br>
+      <strong>Restore from a backup</strong> lets you choose a backup file you saved earlier and your writing comes back. Anything already written on those cards is replaced, everything else is kept.<br><br>
+      <strong>Print or save as PDF</strong> opens your grimoire ready to print, or choose "Save as PDF" in the print dialogue to keep a readable copy.
+    </div>
+    <div class="records-btns">
+      <button class="records-btn" type="button" onclick="exportGrimoire()">Save a backup</button>
+      <button class="records-btn" type="button" onclick="document.getElementById('import-file').click()">Restore from a backup</button>
+      <button class="records-btn" type="button" onclick="printGrimoire()">Print or save as PDF</button>
+    </div>
+    <input type="file" id="import-file" accept="application/json,.json" style="display:none" onchange="importGrimoire(this)">
+
+    <div class="about-divider"></div>
+
     <div class="about-how">Privacy</div>
-    <div class="about-how-text">All your data is saved privately on your device only. Nothing is sent anywhere.</div>
+    <div class="about-how-text">All your data is saved privately on your device only. Nothing is sent anywhere, so do save yourself a backup now and then.</div>
 
     <div class="about-divider"></div>
 
@@ -884,6 +919,128 @@ function showGrimoireTab(tab) {
     ta.value = localStorage.getItem('witch-notes') || '';
     autoResize(ta);
   }
+}
+
+// ── Backup, restore, print ────────────────────────────────────────────────
+// Everything lives in this browser. These three let you keep a copy of it.
+function collectAll() {
+  const journal = {}, done = {};
+  for (let i = 0; i < CARDS.length; i++) {
+    const t = localStorage.getItem(journalKey(i));
+    const d = localStorage.getItem(completedKey(i));
+    if (t) journal[i] = t;
+    if (d) done[i] = d;
+  }
+  return {
+    app: 'witch-oracle',
+    version: 1,
+    exported: new Date().toISOString(),
+    journal: journal,
+    done: done,
+    notes: localStorage.getItem('witch-notes') || '',
+  };
+}
+
+function exportGrimoire() {
+  const d = new Date();
+  const stamp = d.getFullYear() + '-' +
+    String(d.getMonth() + 1).padStart(2, '0') + '-' +
+    String(d.getDate()).padStart(2, '0');
+  const name = 'witch-oracle-' + stamp + '.json';
+  const text = JSON.stringify(collectAll(), null, 2);
+  // On a phone the share sheet is friendlier than a download.
+  try {
+    const file = new File([text], name, { type: 'application/json' });
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      navigator.share({ files: [file], title: 'Witch Oracle backup' }).catch(() => {});
+      return;
+    }
+  } catch (e) { /* fall through to download */ }
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([text], { type: 'application/json' }));
+  a.download = name;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+
+function importGrimoire(input) {
+  const file = input.files && input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    let data;
+    try { data = JSON.parse(reader.result); }
+    catch (e) { alert('That file could not be read.'); input.value = ''; return; }
+    if (!data || data.app !== 'witch-oracle' || !data.journal) {
+      alert('That does not look like a Witch Oracle backup.');
+      input.value = '';
+      return;
+    }
+    const count = Object.keys(data.journal).length;
+    if (!confirm('Restore ' + count + (count === 1 ? ' entry' : ' entries') +
+                 '?\n\nAnything already written on those cards will be replaced. Everything else is kept.')) {
+      input.value = '';
+      return;
+    }
+    // Merge rather than wipe, so restoring never loses what is already here.
+    Object.keys(data.journal).forEach(k => {
+      localStorage.setItem(journalKey(k), data.journal[k]);
+    });
+    if (data.done) {
+      Object.keys(data.done).forEach(k => {
+        localStorage.setItem(completedKey(k), data.done[k]);
+      });
+    }
+    if (data.notes) {
+      const existing = localStorage.getItem('witch-notes') || '';
+      localStorage.setItem('witch-notes', existing && existing !== data.notes
+        ? existing + '\n\n' + data.notes
+        : data.notes);
+    }
+    input.value = '';
+    if (typeof currentIdx === 'number') loadJournal(currentIdx);
+    alert('Your grimoire has been restored.');
+  };
+  reader.readAsText(file);
+}
+
+function printGrimoire() {
+  let body = '';
+  for (let i = 0; i < CARDS.length; i++) {
+    const text = (localStorage.getItem(journalKey(i)) || '').trim();
+    const done = localStorage.getItem(completedKey(i)) || '';
+    if (!text && !done) continue;
+    const c = CARDS[i];
+    body += '<div class="item"><div class="h"><span>' + escHtml(c.name) + '</span>' +
+            '<span class="d">' + escHtml(done || 'In progress') + '</span></div>' +
+            '<div class="q">' + escHtml(c.prompt) + '</div>' +
+            (text ? '<div class="a">' + escHtml(text).replace(/\n/g, '<br>') + '</div>' : '') +
+            '</div>';
+  }
+  const notes = (localStorage.getItem('witch-notes') || '').trim();
+  if (notes) {
+    body += '<h2>Notes</h2><div class="a">' + escHtml(notes).replace(/\n/g, '<br>') + '</div>';
+  }
+  if (!body) { alert('There is nothing written yet to print.'); return; }
+  const w = window.open('', '_blank');
+  if (!w) { alert('Your browser blocked the print window. Allow pop-ups for this app and try again.'); return; }
+  w.document.write(
+    '<!doctype html><html><head><meta charset="utf-8"><title>My Grimoire</title>' +
+    '<style>body{font-family:Georgia,serif;color:#1a1000;max-width:700px;margin:40px auto;padding:0 24px;line-height:1.7}' +
+    'h1{font-size:22px;letter-spacing:2px;text-transform:uppercase}' +
+    'h2{font-size:13px;letter-spacing:2px;text-transform:uppercase;margin-top:32px;border-bottom:1px solid #ccc;padding-bottom:6px}' +
+    '.item{margin:22px 0;page-break-inside:avoid}' +
+    '.h{display:flex;justify-content:space-between;font-size:11px;letter-spacing:1px;text-transform:uppercase;color:#6a5a3e}' +
+    '.q{font-style:italic;color:#5a4a2e;margin-top:4px}.a{margin-top:6px}' +
+    '.foot{margin-top:40px;font-size:12px;opacity:0.6}</style></head><body>' +
+    '<h1>My Grimoire</h1>' + body +
+    '<div class="foot">The Witch\'s Oracle ~ Barbara Ford-Hammond ~ barbaraford-hammond.com</div>' +
+    '</body></html>'
+  );
+  w.document.close();
+  setTimeout(() => { w.focus(); w.print(); }, 300);
 }
 
 function buildEntriesHtml() {
